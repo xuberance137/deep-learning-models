@@ -41,7 +41,7 @@ partial_y_train = y_train[10000:]
 model = Sequential()
 model.add(Dense(16, activation='relu', input_dim=10000))
 model.add(Dense(16, activation='relu'))
-model.add(Dense(1, activation='sigmoid'))
+model.add(Dense(1, activation='tanh'))
 model.compile(optimizer=RMSprop(lr=0.001), loss=binary_crossentropy, metrics=[binary_accuracy])
 #train network
 history = model.fit(partial_x_train, partial_y_train, epochs=10, batch_size=512, validation_data=(x_val,y_val))
@@ -56,7 +56,7 @@ if PLOT_TRAINING:
 	plt.show()
 #evaluate network
 results = model.evaluate(x_test, y_test)
-print 'Accuracy on test data set : ', results[1]
+print '\nAccuracy on test data set : ', results[1]
 #predict with network
 pred = model.predict(x_test)
 
