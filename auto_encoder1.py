@@ -7,28 +7,31 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ENC_DIM = 32
-NUM_EPOCHS = 100
+NUM_EPOCHS = 20
 SRC_DIM = (28,28)
 SRC_SIZE = SRC_DIM[0]*SRC_DIM[1]
 NUM_IMG = 10
 OFFSET_IMG  = 25
 
-# this is our input placeholder
 input_img = Input(shape=(SRC_SIZE,))
-# "encoded" is the encoded representation of the input
-encoded = Dense(ENC_DIM, activation='relu', activity_regularizer=regularizers.l1(10e-5))(input_img)
-# "decoded" is the lossy reconstruction of the input
+#encoded = Dense(ENC_DIM, activation='relu', activity_regularizer=regularizers.l1(10e-5))(input_img)
+encoded = Dense(ENC_DIM, activation='relu')(input_img)
 decoded = Dense(SRC_SIZE, activation='sigmoid')(encoded)
-# this model maps an input to its reconstruction
 autoencoder = Model(input_img, decoded)
 encoder = Model(input_img, encoded)
-# create a placeholder for an encoded (32-dimensional) input
 encoded_input = Input(shape=(ENC_DIM,))
-# retrieve the last layer of the autoencoder model
 decoder_layer = autoencoder.layers[-1]
-# create the decoder model
 decoder = Model(encoded_input, decoder_layer(encoded_input))
 autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
+
+encodedDeep = Dense(ENC_DIM*4, activation='relu')(input_img)
+encodedDeep = Dense(ENC_DIM*2, activation='relu')(encodedDeep)
+encodedDeep = Dense(ENC_DIM, activation='sigmoid')(encodedDeep)
+decodedDeep = Dense(ENC_DIM*2, activation='relu')(encodedDeep)
+decodedDeep = Dense(ENC_DIM*4, activation='relu')(decodedDeep)
+decodedDeep = Dense(SRC_SIZE, activation='sigmoid')(decodedDeep)
+autoencoderDeep = Model(input_img, decodedDeep)
+autoencoderDeep.compile(optimizer='adadelta', loss='binary_crossentropy')
 
 (x_train, _), (x_test, _) = mnist.load_data()
 x_train = x_train.astype('float32') / 255.
@@ -41,18 +44,24 @@ autoencoder.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=256, shuffle=Tru
 encoded_imgs = encoder.predict(x_test)
 decoded_imgs = decoder.predict(encoded_imgs)
 
+autoencoderDeep.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=256, shuffle=True, validation_data=(x_test, x_test))
+decoded_imgsDeep = autoencoderDeep.predict(x_test)
+print decoded_imgsDeep.shape
 
-
-plt.figure(figsize=(20,4))
+plt.figure(figsize=(20,6))
 for n in range(NUM_IMG):
-	ax = plt.subplot(2, NUM_IMG, n+1)
+	ax = plt.subplot(3, NUM_IMG, n+1)
 	plt.imshow(x_test[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
 	plt.gray()
 	ax.get_xaxis().set_visible(False)
 	ax.get_yaxis().set_visible(False)
-
-	ax = plt.subplot(2, NUM_IMG, NUM_IMG+n+1)
+	ax = plt.subplot(3, NUM_IMG, NUM_IMG+n+1)
 	plt.imshow(decoded_imgs[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
+	plt.gray()
+	ax.get_xaxis().set_visible(False)
+	ax.get_yaxis().set_visible(False)
+	ax = plt.subplot(3, NUM_IMG, 2*NUM_IMG+n+1)
+	plt.imshow(decoded_imgsDeep[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
 	plt.gray()
 	ax.get_xaxis().set_visible(False)
 	ax.get_yaxis().set_visible(False)
