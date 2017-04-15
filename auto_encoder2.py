@@ -4,7 +4,9 @@ from keras import backend as K
 from keras.datasets import mnist
 from keras.callbacks import TensorBoard
 import numpy as np
+import matplotlib.pyplot as plt
 
+NUM_EPOCHS = 50
 SRC_DIM = (28,28)
 SRC_SIZE = SRC_DIM[0]*SRC_DIM[1]
 
@@ -34,20 +36,20 @@ x_test = x_test.astype('float32') / 255.
 x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))  # adapt this if using `channels_first` image data format
 x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))  # adapt this if using `channels_first` image data format
 
-autoencoder.fit(x_train, x_train, epochs=50, batch_size=128, shuffle=True, validation_data=(x_test, x_test), callbacks=[TensorBoard(log_dir='/tmp/autoencoder')])
+autoencoder.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=128, shuffle=True, validation_data=(x_test, x_test), callbacks=[TensorBoard(log_dir='/tmp/autoencoder')])
 
 decoded_imgs = autoencoder.predict(x_test)
 
-plt.figure(figsize=(20,6))
-for n in range(NUM_IMG):
-	ax = plt.subplot(2, NUM_IMG, n+1)
-	plt.imshow(x_test[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
-	plt.gray()
-	ax.get_xaxis().set_visible(False)
-	ax.get_yaxis().set_visible(False)
-	ax = plt.subplot(2, NUM_IMG, NUM_IMG+n+1)
-	plt.imshow(decoded_imgs[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
-	plt.gray()
-	ax.get_xaxis().set_visible(False)
-	ax.get_yaxis().set_visible(False)
-plt.show()
+# plt.figure(figsize=(20,6))
+# for n in range(NUM_IMG):
+# 	ax = plt.subplot(2, NUM_IMG, n+1)
+# 	plt.imshow(x_test[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
+# 	plt.gray()
+# 	ax.get_xaxis().set_visible(False)
+# 	ax.get_yaxis().set_visible(False)
+# 	ax = plt.subplot(2, NUM_IMG, NUM_IMG+n+1)
+# 	plt.imshow(decoded_imgs[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
+# 	plt.gray()
+# 	ax.get_xaxis().set_visible(False)
+# 	ax.get_yaxis().set_visible(False)
+# plt.show()
