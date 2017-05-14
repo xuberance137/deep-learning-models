@@ -6,23 +6,29 @@ from keras.callbacks import TensorBoard
 import numpy as np
 import matplotlib.pyplot as plt
 
-NUM_EPOCHS = 50
+NUM_EPOCHS = 20
 SRC_DIM = (28,28)
 SRC_SIZE = SRC_DIM[0]*SRC_DIM[1]
+NUM_IMG = 10
+OFFSET_IMG  = 25
+LAYER1_SIZE = 5
+LAYER2_SIZE = 3
+PLOT_WEIGHTS = 1
+PLOT_RESPONSE = 0
 
 input_img = Input(shape=(SRC_DIM[0], SRC_DIM[1], 1))
-x = Conv2D(16, (3,3), activation='relu', padding='same')(input_img)
+x = Conv2D(16, (LAYER1_SIZE,LAYER1_SIZE), activation='relu', padding='same')(input_img)
 x = MaxPooling2D((2,2), padding='same')(x)
-x = Conv2D(8, (3,3), activation='relu', padding='same')(x)
+x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
 x = MaxPooling2D((2,2), padding='same')(x)
 x = Conv2D(8, (3,3), activation='relu', padding='same')(x)
 encoded = MaxPooling2D((2,2), padding='same')(x)
 
 x = Conv2D(8, (3,3), activation='relu', padding='same')(encoded)
 x = UpSampling2D((2,2))(x)
-x = Conv2D(8, (3,3), activation='relu', padding='same')(x)
+x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
 x = UpSampling2D((2,2))(x)
-x = Conv2D(16, (3,3), activation='relu')(x)
+x = Conv2D(16, (LAYER2_SIZE,LAYER2_SIZE), activation='relu')(x)
 x = UpSampling2D((2,2))(x)
 decoded = Conv2D(1, (3,3), activation='sigmoid', padding='same')(x)
 
@@ -40,16 +46,46 @@ autoencoder.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=128, shuffle=Tru
 
 decoded_imgs = autoencoder.predict(x_test)
 
-# plt.figure(figsize=(20,6))
-# for n in range(NUM_IMG):
-# 	ax = plt.subplot(2, NUM_IMG, n+1)
-# 	plt.imshow(x_test[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
-# 	plt.gray()
-# 	ax.get_xaxis().set_visible(False)
-# 	ax.get_yaxis().set_visible(False)
-# 	ax = plt.subplot(2, NUM_IMG, NUM_IMG+n+1)
-# 	plt.imshow(decoded_imgs[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
-# 	plt.gray()
-# 	ax.get_xaxis().set_visible(False)
-# 	ax.get_yaxis().set_visible(False)
-# plt.show()
+noise_images = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
+
+if PLOT_RESPONSE:
+	plt.figure(figsize=(20,6))
+	for n in range(NUM_IMG):
+		ax = plt.subplot(2, NUM_IMG, n+1)
+		plt.imshow(x_test[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
+		plt.gray()
+		ax.get_xaxis().set_visible(False)
+		ax.get_yaxis().set_visible(False)
+		ax = plt.subplot(2, NUM_IMG, NUM_IMG+n+1)
+		plt.imshow(decoded_imgs[OFFSET_IMG+n].reshape(SRC_DIM[0], SRC_DIM[1]))
+		plt.gray()
+		ax.get_xaxis().set_visible(False)
+		ax.get_yaxis().set_visible(False)
+	plt.show()
+
+if PLOT_WEIGHTS:
+	w1=autoencoder.get_weights()[0]
+	plt.figure(figsize=(10,10))
+	for n in range(w1.shape[3]):
+		ax = plt.subplot(4, 4, n+1)
+		plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
+		plt.gray()
+		ax.get_xaxis().set_visible(False)
+
+	w2=autoencoder.get_weights()[2]
+	plt.figure(figsize=(10,10))
+	for n in range(w2.shape[3]):
+		ax = plt.subplot(2, 4, n+1)
+		plt.imshow(np.mean(w2,axis=2)[:,:,n])
+		plt.gray()
+		ax.get_xaxis().set_visible(False)
+		ax.get_yaxis().set_visible(False)
+	plt.show()
+
+
+
+
+
+
+
+
