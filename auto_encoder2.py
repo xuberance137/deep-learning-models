@@ -132,7 +132,7 @@ if ANIMATE_KERNELS:
 	fig = plt.figure()
 
 	ani = animation.FuncAnimation(fig, animate, steps)
-	gif_file = './model/autoencoder2_kernels_layer2.gif'
+	gif_file = './model/autoencoder2_kernels_layer1.gif'
 	ani.save(gif_file, writer='imagemagick', fps=1)
 
 
