@@ -21,12 +21,14 @@ PLOT_WEIGHTS = 1
 PLOT_RESPONSE = 0
 ANIMATE_KERNELS = 1
 DEBUG_MODE = 0
+TRAIN_MODEL = 0
 
 if ANIMATE_KERNELS:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+# build network model
 input_img = Input(shape=(SRC_DIM[0], SRC_DIM[1], 1))
 x = Conv2D(16, (LAYER1_SIZE,LAYER1_SIZE), activation='relu', padding='same')(input_img)
 x = MaxPooling2D((2,2), padding='same')(x)
@@ -34,7 +36,6 @@ x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
 x = MaxPooling2D((2,2), padding='same')(x)
 x = Conv2D(8, (3,3), activation='relu', padding='same')(x)
 encoded = MaxPooling2D((2,2), padding='same')(x)
-
 x = Conv2D(8, (3,3), activation='relu', padding='same')(encoded)
 x = UpSampling2D((2,2))(x)
 x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
@@ -50,25 +51,25 @@ model_json = autoencoder.to_json()
 with open('./model/autoencoder2_model.json', 'w') as json_file:
 	json.dump(model_json, json_file, indent=4, sort_keys=True)
 
-(x_train, _), (x_test, _) = mnist.load_data()
+if TRAIN_MODEL:
+	# set up train/test data
+	(x_train, _), (x_test, _) = mnist.load_data()
+	x_train = x_train.astype('float32') / 255.
+	x_test = x_test.astype('float32') / 255.
+	x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))  # adapt this if using `channels_first` image data format
+	x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))  # adapt this if using `channels_first` image data format
 
-x_train = x_train.astype('float32') / 255.
-x_test = x_test.astype('float32') / 255.
-x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))  # adapt this if using `channels_first` image data format
-x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))  # adapt this if using `channels_first` image data format
+	# Need to remove, adding for debug
+	if DEBUG_MODE:
+		x_train = x_train[:1000,:,:]
+		x_test = x_test[:100,:,:]
 
-# Need to remove, adding for debug
-if DEBUG_MODE:
-	x_train = x_train[:1000,:,:]
-	x_test = x_test[:100,:,:]
+	model_checkpoint = ModelCheckpoint('./model/autoencoder2_model_{epoch:03d}.hdf5')
+	csv_log = CSVLogger('./model/autoencoder2_training_log.csv', separator=',', append=False)
+	autoencoder.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=128, shuffle=True, validation_data=(x_test, x_test), callbacks=[model_checkpoint, csv_log, TensorBoard(log_dir='/tmp/autoencoder')])
 
-model_checkpoint = ModelCheckpoint('./model/autoencoder2_model_{epoch:03d}.hdf5')
-csv_log = CSVLogger('./model/autoencoder2_training_log.csv', separator=',', append=False)
-autoencoder.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=128, shuffle=True, validation_data=(x_test, x_test), callbacks=[model_checkpoint, csv_log, TensorBoard(log_dir='/tmp/autoencoder')])
-
-decoded_imgs = autoencoder.predict(x_test)
-
-noise_images = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
+# decoded_imgs = autoencoder.predict(x_test)
+# noise_images = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
 
 if PLOT_RESPONSE:
 	plt.figure(figsize=(20,6))
@@ -95,7 +96,7 @@ if PLOT_WEIGHTS:
 		plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
 		plt.gray()
 		ax.get_xaxis().set_visible(False)
-
+		ax.get_yaxis().set_visible(False)
 	w2=autoencoder.get_weights()[2]
 	plt.figure(figsize=(10,10))
 	for n in range(w2.shape[3]):
@@ -118,6 +119,7 @@ def animate(step):
 		plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
 		plt.gray()
 		ax.get_xaxis().set_visible(False)
+		ax.get_yaxis().set_visible(False)
 
 	title_string = 'AutoEncoder Layer 1 - Step: ' + str(step)
 	plt.suptitle(title_string)
@@ -130,7 +132,7 @@ if ANIMATE_KERNELS:
 	fig = plt.figure()
 
 	ani = animation.FuncAnimation(fig, animate, steps)
-	gif_file = './model/autoencoder2_kernels_layer1.gif'
+	gif_file = './model/autoencoder2_kernels_layer2.gif'
 	ani.save(gif_file, writer='imagemagick', fps=1)
 
 
