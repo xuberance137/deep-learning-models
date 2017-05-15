@@ -62,7 +62,7 @@ if DEBUG_MODE:
 	x_train = x_train[:1000,:,:]
 	x_test = x_test[:100,:,:]
 
-model_checkpoint = ModelCheckpoint('./model/autoencoder2_model_{epoch:03d}.hdf5',verbose=1)
+model_checkpoint = ModelCheckpoint('./model/autoencoder2_model_{epoch:03d}.hdf5')
 csv_log = CSVLogger('./model/autoencoder2_training_log.csv', separator=',', append=False)
 autoencoder.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=128, shuffle=True, validation_data=(x_test, x_test), callbacks=[model_checkpoint, csv_log, TensorBoard(log_dir='/tmp/autoencoder')])
 
