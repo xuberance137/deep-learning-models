@@ -47,6 +47,7 @@ pbr==2.0.0
 pexpect==4.3.1
 pickleshare==0.7.4
 Pillow==4.3.0
+progressbar==2.3
 prompt-toolkit==1.0.15
 protobuf==3.2.0
 ptyprocess==0.5.2
@@ -59,11 +60,13 @@ pyzmq==16.0.3
 qtconsole==4.3.1
 requests==2.18.4
 scandir==1.6
+scikit-learn==0.19.1
 scipy==1.0.0
 seaborn==0.8.1
 simplegeneric==0.8.1
 singledispatch==3.4.0.3
 six==1.11.0
+sklearn==0.0
 streamz==0.2.0
 subprocess32==3.2.7
 tensorflow==1.0.1
