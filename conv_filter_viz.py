@@ -9,13 +9,22 @@ import matplotlib.pyplot as plt
 
 IMG_SIZE = 100
 EPSILON = 1e-5
-INTERVAL_SIZE = 2
+NUM_ITERATIONS = 100
+INTERVAL_SIZE = 10
+NUM_FILTERS = 5
+NUM_INTERVALS = 10
+INITIAL_FILTER = 20
 
+
+'''
+Going from unbounded tensor to normalized tensor, scales and clipped to 8 bit integer numpy array
+'''
 def deprocess_image(x):
     # normalize tensor: center on 0., ensure std is 0.1
     x -= x.mean()
     x /= (x.std() + EPSILON)
-    x *= 0.1
+    # scale by 10% to prevent saturated images
+    x *= 0.1 
     # clip to [0, 1]
     x += 0.5
     x = np.clip(x, 0, 1)
@@ -25,10 +34,15 @@ def deprocess_image(x):
     return x
 
 '''
-This can be done with gradient ascent in input space: applying gradient descent to the value of the input image of a convnet so as to maximize the response of a specific filter, starting from a blank input image. The resulting input image would be one that the chosen filter is maximally responsive to.
-The process is simple: we will build a loss function that maximizes the value of a given filter in a given convolution layer, then we will use stochastic gradient descent to adjust the values of the input image so as to maximize this activation value.
-'''
+We can get to filter visualizations with gradient ascent in input space: applying gradient 
+descent to the value of the input image of a convnet so as to maximize the response of a 
+specific filter, starting from a blank input image. The resulting input image would 
+be one that the chosen filter is maximally responsive to.
 
+The process is simple: we will build a loss function that maximizes the value of a 
+given filter in a given convolution layer, then we will use stochastic gradient 
+descent to adjust the values of the input image so as to maximize this activation value.
+'''
 def generate_filter_viz(layer_name, filter_index, size=100):
 	layer_output = model.get_layer(layer_name).output
 	loss = K.mean(layer_output[:, :, :, filter_index])
@@ -38,17 +52,18 @@ def generate_filter_viz(layer_name, filter_index, size=100):
 	 # We add 1e-5 before dividing so as to avoid accidentally dividing by 0.
 	grads /= (K.sqrt(K.mean(K.square(grads))) + EPSILON)
 
+	# going from input image to loss and gradients
 	iterate = K.function([model.input], [loss, grads])
-	loss_value, grads_value = iterate([np.zeros((1, IMG_SIZE, IMG_SIZE, 3))])
 
 	# We start from a gray image with some noise
 	input_img_data = np.random.random((1, IMG_SIZE, IMG_SIZE, 3)) * 20 + 128.
 	# Run gradient ascent for 40 steps
-	step = 1.  # this is the magnitude of each gradient update
+	step = 100.0  # this is the magnitude of each gradient update
 
+	# finding intermediate filter activation between 0 and NUM_ITERATIONS
 	image_stack = []
 
-	for i in range(20):
+	for i in range(NUM_ITERATIONS):
 		# Compute the loss value and gradient value
 		loss_value, grads_value = iterate([input_img_data])
 		# Here we adjust the input image in the direction that maximizes the loss
@@ -60,7 +75,9 @@ def generate_filter_viz(layer_name, filter_index, size=100):
 
 	return image_stack
 
-### MAIN FUNCTION ###
+'''
+Main Function
+'''
 if __name__ == '__main__':
 	#model = VGG16(weights='imagenet', include_top=True)
 	model = ResNet50(weights='imagenet')
@@ -78,10 +95,6 @@ if __name__ == '__main__':
 		print(i, l.name, l.output_shape)
 
 	layer_name = 'res3a_branch2a' #'block3_conv1'
-	
-	NUM_FILTERS = 5
-	NUM_INTERVALS = 10
-	INITIAL_FILTER = 1
 
 	for filter_index in range(INITIAL_FILTER, INITIAL_FILTER + NUM_FILTERS):
 
