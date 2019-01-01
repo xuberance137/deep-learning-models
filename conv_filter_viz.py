@@ -1,15 +1,20 @@
 from keras.applications.vgg16 import VGG16
+from keras.applications.resnet50 import ResNet50
 from keras.preprocessing import image
 import keras.backend as K
 from keras.applications.vgg16 import preprocess_input, decode_predictions
+from keras.applications.resnet50 import preprocess_input, decode_predictions
 import numpy as np
 import matplotlib.pyplot as plt
 
+IMG_SIZE = 100
+EPSILON = 1e-5
+INTERVAL_SIZE = 2
 
 def deprocess_image(x):
     # normalize tensor: center on 0., ensure std is 0.1
     x -= x.mean()
-    x /= (x.std() + 1e-5)
+    x /= (x.std() + EPSILON)
     x *= 0.1
     # clip to [0, 1]
     x += 0.5
@@ -31,27 +36,34 @@ def generate_filter_viz(layer_name, filter_index, size=100):
 	# hence we only keep the first element -- which is a tensor.
 	grads = K.gradients(loss, model.input)[0]
 	 # We add 1e-5 before dividing so as to avoid accidentally dividing by 0.
-	grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+	grads /= (K.sqrt(K.mean(K.square(grads))) + EPSILON)
 
 	iterate = K.function([model.input], [loss, grads])
-	loss_value, grads_value = iterate([np.zeros((1, 100, 100, 3))])
+	loss_value, grads_value = iterate([np.zeros((1, IMG_SIZE, IMG_SIZE, 3))])
 
 	# We start from a gray image with some noise
-	input_img_data = np.random.random((1, 100, 100, 3)) * 20 + 128.
+	input_img_data = np.random.random((1, IMG_SIZE, IMG_SIZE, 3)) * 20 + 128.
 	# Run gradient ascent for 40 steps
 	step = 1.  # this is the magnitude of each gradient update
-	for i in range(100):
+
+	image_stack = []
+
+	for i in range(20):
 		# Compute the loss value and gradient value
 		loss_value, grads_value = iterate([input_img_data])
 		# Here we adjust the input image in the direction that maximizes the loss
 		input_img_data += grads_value * step
 
-	img = input_img_data[0]
-	return deprocess_image(img)
+		if i % INTERVAL_SIZE ==0:
+			img = input_img_data[0]
+			image_stack.append(deprocess_image(img))
+
+	return image_stack
 
 ### MAIN FUNCTION ###
 if __name__ == '__main__':
-	model = VGG16(weights='imagenet', include_top=True)
+	#model = VGG16(weights='imagenet', include_top=True)
+	model = ResNet50(weights='imagenet')
 
 	img_path = '/Users/gopal/Downloads/base5.jpg'
 	img = image.load_img(img_path, target_size=(224, 224))
@@ -65,17 +77,23 @@ if __name__ == '__main__':
 	for i, l in enumerate(model.layers):
 		print(i, l.name, l.output_shape)
 
-	layer_name = 'block3_conv1'
-	filter_index = 200
+	layer_name = 'res3a_branch2a' #'block3_conv1'
+	
+	NUM_FILTERS = 5
+	NUM_INTERVALS = 10
+	INITIAL_FILTER = 1
 
-	plt.imshow(generate_filter_viz(layer_name, filter_index))
+	for filter_index in range(INITIAL_FILTER, INITIAL_FILTER + NUM_FILTERS):
+
+		image_stack = generate_filter_viz(layer_name, filter_index)
+
+		for index in range(NUM_INTERVALS):
+			plt.subplot(NUM_FILTERS, NUM_INTERVALS, ((filter_index - INITIAL_FILTER)*NUM_INTERVALS)+index+1)
+			plt.imshow(image_stack[index])
 	plt.show()
 
 
-# from keras.applications.resnet50 import ResNet50
-# from keras.preprocessing import image
-# from keras.applications.resnet50 import preprocess_input, decode_predictions
-# import numpy as np
+
 
 # model = ResNet50(weights='imagenet')
 
