@@ -1,3 +1,14 @@
+'''
+
+Run the script with:
+python conv_filter_viz.py layer_name filter_id
+
+e.g.:
+python conv_filter_viz.py res3a_branch2a 15
+
+
+'''
+
 from keras.applications.vgg16 import VGG16
 from keras.applications.resnet50 import ResNet50
 from keras.preprocessing import image
@@ -6,14 +17,29 @@ from keras.applications.vgg16 import preprocess_input, decode_predictions
 from keras.applications.resnet50 import preprocess_input, decode_predictions
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
+TEST_MODEL = False
 IMG_SIZE = 100
 EPSILON = 1e-5
-NUM_ITERATIONS = 100
-INTERVAL_SIZE = 10
+NUM_ITERATIONS = 10
+INTERVAL_SIZE = NUM_ITERATIONS // 10 # this needs to be set as 1/10th of the number of iterations
 NUM_FILTERS = 5
-NUM_INTERVALS = 10
-INITIAL_FILTER = 20
+NUM_INTERVALS = 10 
+
+'''
+command line arguments
+'''
+def parse_and_set_arguments():
+	global layer_name 	#layer_name = 'res3a_branch2a' #'block3_conv1'
+	global initial_filter_id
+	parser = argparse.ArgumentParser(description='Filter visualization with gradient ascent')
+	parser.add_argument('layer_name', metavar='base', type=str, help='Layer Name for visualization')
+	parser.add_argument('initial_filter_id', metavar='ref', type=int, help='Initial filter amongst 10 for visualization')
+	args = parser.parse_args()
+	# set values
+	layer_name = args.layer_name
+	initial_filter_id = args.initial_filter_id
 
 
 '''
@@ -58,7 +84,7 @@ def generate_filter_viz(layer_name, filter_index, size=100):
 	# We start from a gray image with some noise
 	input_img_data = np.random.random((1, IMG_SIZE, IMG_SIZE, 3)) * 20 + 128.
 	# Run gradient ascent for 40 steps
-	step = 100.0  # this is the magnitude of each gradient update
+	step = 1.0  # this is the magnitude of each gradient update
 
 	# finding intermediate filter activation between 0 and NUM_ITERATIONS
 	image_stack = []
@@ -79,29 +105,28 @@ def generate_filter_viz(layer_name, filter_index, size=100):
 Main Function
 '''
 if __name__ == '__main__':
+
+	parse_and_set_arguments()
 	#model = VGG16(weights='imagenet', include_top=True)
 	model = ResNet50(weights='imagenet')
 
-	img_path = '/Users/gopal/Downloads/base5.jpg'
-	img = image.load_img(img_path, target_size=(224, 224))
-	x = image.img_to_array(img)
-	x = np.expand_dims(x, axis=0)
-	x = preprocess_input(x)
-
-	preds = model.predict(x)
-	print('Predicted:', decode_predictions(preds, top=5)[0])
+	if TEST_MODEL:
+		img_path = '/Users/gopal/Downloads/base5.jpg'
+		img = image.load_img(img_path, target_size=(224, 224))
+		x = image.img_to_array(img)
+		x = np.expand_dims(x, axis=0)
+		x = preprocess_input(x)
+		preds = model.predict(x)
+		print('Predicted:', decode_predictions(preds, top=5)[0])
 
 	for i, l in enumerate(model.layers):
 		print(i, l.name, l.output_shape)
 
-	layer_name = 'res3a_branch2a' #'block3_conv1'
-
-	for filter_index in range(INITIAL_FILTER, INITIAL_FILTER + NUM_FILTERS):
-
+	for filter_index in range(initial_filter_id, initial_filter_id + NUM_FILTERS):
 		image_stack = generate_filter_viz(layer_name, filter_index)
-
 		for index in range(NUM_INTERVALS):
-			plt.subplot(NUM_FILTERS, NUM_INTERVALS, ((filter_index - INITIAL_FILTER)*NUM_INTERVALS)+index+1)
+			plt.subplot(NUM_FILTERS, NUM_INTERVALS, ((filter_index - initial_filter_id)*NUM_INTERVALS)+index+1)
 			plt.imshow(image_stack[index])
+
 	plt.show()
 
