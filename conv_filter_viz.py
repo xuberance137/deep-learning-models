@@ -9,12 +9,12 @@ python conv_filter_viz.py res3a_branch2a 15
 
 '''
 
-from keras.applications.vgg16 import VGG16
-from keras.applications.resnet50 import ResNet50
+from keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
+from keras.applications.resnet50 import ResNet50, preprocess_input, decode_predictions
+from keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input, decode_predictions
+from keras.applications.densenet import DenseNet121, preprocess_input, decode_predictions
 from keras.preprocessing import image
 import keras.backend as K
-from keras.applications.vgg16 import preprocess_input, decode_predictions
-from keras.applications.resnet50 import preprocess_input, decode_predictions
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -108,7 +108,12 @@ if __name__ == '__main__':
 
 	parse_and_set_arguments()
 	#model = VGG16(weights='imagenet', include_top=True)
-	model = ResNet50(weights='imagenet')
+	#model = ResNet50(weights='imagenet')
+	#model = DenseNet121(weights='imagenet')
+	model = MobileNetV2(weights='imagenet')
+
+	for i, l in enumerate(model.layers):
+		print(i, l.name, l.output_shape)
 
 	if TEST_MODEL:
 		img_path = '/Users/gopal/Downloads/base5.jpg'
@@ -119,14 +124,12 @@ if __name__ == '__main__':
 		preds = model.predict(x)
 		print('Predicted:', decode_predictions(preds, top=5)[0])
 
-	for i, l in enumerate(model.layers):
-		print(i, l.name, l.output_shape)
-
-	for filter_index in range(initial_filter_id, initial_filter_id + NUM_FILTERS):
-		image_stack = generate_filter_viz(layer_name, filter_index)
-		for index in range(NUM_INTERVALS):
-			plt.subplot(NUM_FILTERS, NUM_INTERVALS, ((filter_index - initial_filter_id)*NUM_INTERVALS)+index+1)
-			plt.imshow(image_stack[index])
+	else:
+		for filter_index in range(initial_filter_id, initial_filter_id + NUM_FILTERS):
+			image_stack = generate_filter_viz(layer_name, filter_index)
+			for index in range(NUM_INTERVALS):
+				plt.subplot(NUM_FILTERS, NUM_INTERVALS, ((filter_index - initial_filter_id)*NUM_INTERVALS)+index+1)
+				plt.imshow(image_stack[index])
 
 	plt.show()
 
