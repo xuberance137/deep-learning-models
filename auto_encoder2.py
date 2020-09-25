@@ -10,7 +10,7 @@ import h5py
 import json
 import io
 
-NUM_EPOCHS = 20
+NUM_EPOCHS = 100
 SRC_DIM = (28,28)
 SRC_SIZE = SRC_DIM[0]*SRC_DIM[1]
 NUM_IMG = 10
@@ -18,13 +18,13 @@ OFFSET_IMG  = 25
 LAYER1_SIZE = 5
 LAYER2_SIZE = 3
 PLOT_WEIGHTS = 1
-PLOT_RESPONSE = 0
+PLOT_RESPONSE = 1
 ANIMATE_KERNELS = 1
 DEBUG_MODE = 0
-TRAIN_MODEL = 0
+TRAIN_MODEL = 1
 
-if ANIMATE_KERNELS:
-    matplotlib.use('Agg')
+# if ANIMATE_KERNELS:
+#     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
@@ -51,14 +51,16 @@ model_json = autoencoder.to_json()
 with open('./model/autoencoder2_model.json', 'w') as json_file:
 	json.dump(model_json, json_file, indent=4, sort_keys=True)
 
-if TRAIN_MODEL:
 	# set up train/test data
 	(x_train, _), (x_test, _) = mnist.load_data()
 	x_train = x_train.astype('float32') / 255.
 	x_test = x_test.astype('float32') / 255.
+	print(x_train.shape)
+	print(x_test.shape)
 	x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))  # adapt this if using `channels_first` image data format
 	x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))  # adapt this if using `channels_first` image data format
 
+if TRAIN_MODEL:
 	# Need to remove, adding for debug
 	if DEBUG_MODE:
 		x_train = x_train[:1000,:,:]
@@ -67,8 +69,13 @@ if TRAIN_MODEL:
 	model_checkpoint = ModelCheckpoint('./model/autoencoder2_model_{epoch:03d}.hdf5')
 	csv_log = CSVLogger('./model/autoencoder2_training_log.csv', separator=',', append=False)
 	autoencoder.fit(x_train, x_train, epochs=NUM_EPOCHS, batch_size=128, shuffle=True, validation_data=(x_test, x_test), callbacks=[model_checkpoint, csv_log, TensorBoard(log_dir='/tmp/autoencoder')])
+else:
+	step = 20
+	model_file = './model/autoencoder2_model_'+str(step).zfill(3)+'.hdf5'
+	print(model_file)
+	autoencoder.load_weights(model_file)
 
-# decoded_imgs = autoencoder.predict(x_test)
+decoded_imgs = autoencoder.predict(x_test)
 # noise_images = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
 
 if PLOT_RESPONSE:
@@ -87,7 +94,7 @@ if PLOT_RESPONSE:
 	plt.show()
 
 if PLOT_WEIGHTS:
-	print 'Plotting weights'
+	print('Plotting weights')
 
 	w1=autoencoder.get_weights()[0]
 	plt.figure(figsize=(10,10))
@@ -110,7 +117,7 @@ if PLOT_WEIGHTS:
 def animate(step):
 	plt.clf()
 	model_file = './model/autoencoder2_model_'+str(step).zfill(3)+'.hdf5'
-	print model_file
+	print(model_file)
 	autoencoder.load_weights(model_file)
 
 	w1=autoencoder.get_weights()[0]
@@ -126,7 +133,7 @@ def animate(step):
 
 if ANIMATE_KERNELS:
 
-	print 'Making animation of kernels...'
+	print('Making animation of kernels...')
 
 	steps = range(0, NUM_EPOCHS)
 	fig = plt.figure()
