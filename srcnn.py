@@ -26,7 +26,7 @@ LAYER1_SIZE = 5
 LAYER2_SIZE = 3
 
 DEBUG_MODE = 0
-TRAIN_MODEL = 1
+TRAIN_MODEL = 0
 BATCH_SIZE = 16
 STEP_FOR_PREDICTION = NUM_EPOCHS-1
 
@@ -193,58 +193,53 @@ if __name__ == '__main__':
 		plt.savefig('./model/'+MODEL_NAME+'_response.png')
 		plt.show()
 
+		for step in range(1,NUM_EPOCHS):
+			model_file = './model/'+MODEL_NAME+'_model_'+str(step).zfill(3)+'.hdf5'
+			print(model_file)
+			model.load_weights(model_file)
+
+			w1=model.get_weights()[0]
+			for n in range(w1.shape[3]):
+				ax = plt.subplot(4, 4, n+1)
+				plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
+				plt.gray()
+				ax.get_xaxis().set_visible(False)
+				ax.get_yaxis().set_visible(False)
+
+			title_string = 'AutoEncoder Layer 1 - Step: ' + str(step)
+			plt.suptitle(title_string)
+			plt.savefig('./model/'+MODEL_NAME+'_weights-'+str(step).zfill(3)+'.png')
+		# if PLOT_WEIGHTS:
+		# 	print('Plotting weights')
+
+		# 	w1=autoencoder.get_weights()[0]
+		# 	plt.figure(figsize=(10,10))
+		# 	for n in range(w1.shape[3]):
+		# 		ax = plt.subplot(4, 4, n+1)
+		# 		plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
+		# 		plt.gray()
+		# 		ax.get_xaxis().set_visible(False)
+		# 		ax.get_yaxis().set_visible(False)
+		# 	w2=autoencoder.get_weights()[2]
+		# 	plt.figure(figsize=(10,10))
+		# 	for n in range(w2.shape[3]):
+		# 		ax = plt.subplot(2, 4, n+1)
+		# 		plt.imshow(np.mean(w2,axis=2)[:,:,n])
+		# 		plt.gray()
+		# 		ax.get_xaxis().set_visible(False)
+		# 		ax.get_yaxis().set_visible(False)
+		# 	plt.savefig('./model/'+MODEL_NAME+'_weights.png')
+			# plt.show()
 
 
 
+		# if ANIMATE_KERNELS:
 
+		# 	print('Making animation of kernels...')
 
+		# 	steps = range(0, NUM_EPOCHS)
+		# 	fig = plt.figure()
 
-	# if PLOT_WEIGHTS:
-	# 	print('Plotting weights')
-
-	# 	w1=autoencoder.get_weights()[0]
-	# 	plt.figure(figsize=(10,10))
-	# 	for n in range(w1.shape[3]):
-	# 		ax = plt.subplot(4, 4, n+1)
-	# 		plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
-	# 		plt.gray()
-	# 		ax.get_xaxis().set_visible(False)
-	# 		ax.get_yaxis().set_visible(False)
-	# 	w2=autoencoder.get_weights()[2]
-	# 	plt.figure(figsize=(10,10))
-	# 	for n in range(w2.shape[3]):
-	# 		ax = plt.subplot(2, 4, n+1)
-	# 		plt.imshow(np.mean(w2,axis=2)[:,:,n])
-	# 		plt.gray()
-	# 		ax.get_xaxis().set_visible(False)
-	# 		ax.get_yaxis().set_visible(False)
-	# 	plt.savefig('./model/'+MODEL_NAME+'_weights.png')
-	# 	# lt.show()
-
-	# def animate(step):
-	# 	plt.clf()
-	# 	model_file = './model/'+MODEL_NAME+'_model_'+str(step).zfill(3)+'.hdf5'
-	# 	print(model_file)
-	# 	autoencoder.load_weights(model_file)
-
-	# 	w1=autoencoder.get_weights()[0]
-	# 	for n in range(w1.shape[3]):
-	# 		ax = plt.subplot(4, 4, n+1)
-	# 		plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
-	# 		plt.gray()
-	# 		ax.get_xaxis().set_visible(False)
-	# 		ax.get_yaxis().set_visible(False)
-
-	# 	title_string = 'AutoEncoder Layer 1 - Step: ' + str(step)
-	# 	plt.suptitle(title_string)
-
-	# if ANIMATE_KERNELS:
-
-	# 	print('Making animation of kernels...')
-
-	# 	steps = range(0, NUM_EPOCHS)
-	# 	fig = plt.figure()
-
-	# 	ani = animation.FuncAnimation(fig, animate, steps)
-	# 	gif_file = './model/autoencoder2_kernels_layer1.gif'
-	# 	ani.save(gif_file, writer='imagemagick', fps=1)
+		# 	ani = animation.FuncAnimation(fig, animate, steps)
+		# 	gif_file = './model/autoencoder2_kernels_layer1.gif'
+		# 	ani.save(gif_file, writer='imagemagick', fps=1)
