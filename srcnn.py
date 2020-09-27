@@ -26,11 +26,12 @@ LAYER1_SIZE = 5
 LAYER2_SIZE = 3
 
 DEBUG_MODE = 0
-TRAIN_MODEL = 0
+TRAIN_MODEL = 1
 BATCH_SIZE = 16
 STEP_FOR_PREDICTION = NUM_EPOCHS-1
 
 PLOT_WEIGHTS = 1
+STORE_WEIGHTS = 0
 PLOT_RESPONSE = 1
 ANIMATE_KERNELS = 0
 
@@ -100,7 +101,6 @@ def build_srcnn():
 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
 	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
 	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
-	x = Conv2D(1, (1,1), activation='relu', padding='same')(x)
 
 	srcnn = Model(input_img, sr)
 	#opt = SGD(lr=0.01, momentum=0.9)
@@ -193,6 +193,7 @@ if __name__ == '__main__':
 		plt.savefig('./model/'+MODEL_NAME+'_response.png')
 		plt.show()
 
+	if STORE_WEIGHTS:
 		for step in range(1,NUM_EPOCHS):
 			model_file = './model/'+MODEL_NAME+'_model_'+str(step).zfill(3)+'.hdf5'
 			print(model_file)
@@ -209,6 +210,8 @@ if __name__ == '__main__':
 			title_string = 'AutoEncoder Layer 1 - Step: ' + str(step)
 			plt.suptitle(title_string)
 			plt.savefig('./model/'+MODEL_NAME+'_weights-'+str(step).zfill(3)+'.png')
+
+
 		# if PLOT_WEIGHTS:
 		# 	print('Plotting weights')
 
