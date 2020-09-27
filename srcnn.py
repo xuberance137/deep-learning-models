@@ -21,7 +21,7 @@ NUM_EPOCHS = 200
 SRC_DIM = (24,24)
 SRC_SIZE = SRC_DIM[0]*SRC_DIM[1]
 NUM_IMG = 5
-OFFSET_IMG  = 0
+OFFSET_IMG  = 10
 LAYER1_SIZE = 5
 LAYER2_SIZE = 3
 
@@ -101,6 +101,7 @@ def build_srcnn():
 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
 	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
 	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
+	#x = Conv2D(1, (1,1), activation='relu', padding='same')(x)
 
 	srcnn = Model(input_img, sr)
 	#opt = SGD(lr=0.01, momentum=0.9)
@@ -161,7 +162,7 @@ if __name__ == '__main__':
 	if PLOT_RESPONSE:
 		fig = plt.figure(figsize=(20,12))
 		for n in range(NUM_IMG):
-			print(np.max(x_val[OFFSET_IMG+n][:,:,0]))
+			# print(np.max(x_val[OFFSET_IMG+n][:,:,0]))
 			# if n ==0:
 			# 	print('Fire :\n')
 			# 	print(x_val[OFFSET_IMG+n][:,:,0])
