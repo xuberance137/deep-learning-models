@@ -1,3 +1,13 @@
+'''
+From 
+Learning a Deep Convolutional Network for Image Super-Resolution, ECCV2014
+f1 = 9, f3 = 5, n1 = 64 and n2 = 32
+
+Composing Weights Animation
+convert -delay 10 -loop 0 ./model/srcnn1_weights-*.png ./model/srcnn1_weights-animated.gif
+'''
+
+
 from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D, BatchNormalization
 from keras.models import Model
 from keras import backend as K
@@ -17,26 +27,28 @@ from PIL import Image
 MODEL_NAME_AUTO = 'autoencoder3'
 MODEL_NAME_SR1 = 'srcnn1'
 MODEL_NAME = MODEL_NAME_SR1
-NUM_EPOCHS = 200
+NUM_EPOCHS = 500
 CROPPED_IMAGES = False
 if CROPPED_IMAGES:
 	SRC_DIM = (24,24)
 else:
-	SRC_DIM = (59,26)
+	SRC_DIM = (26, 59)
 SRC_SIZE = SRC_DIM[0]*SRC_DIM[1]
+DOWNSCALE_FACTOR = 4
 NUM_IMG = 5
 OFFSET_IMG  = 10
-LAYER1_SIZE = 5
-LAYER2_SIZE = 3
+LAYER1_SIZE = 9
+LAYER2_SIZE = 5
+LAYER3_SIZE = 3
 
 DEBUG_MODE = 0
 TRAIN_MODEL = 1
 BATCH_SIZE = 16
 STEP_FOR_PREDICTION = NUM_EPOCHS-1
 
-PLOT_WEIGHTS = 1
-STORE_WEIGHTS = 0
-PLOT_RESPONSE = 1
+PLOT_WEIGHTS = 0
+STORE_WEIGHTS = 1
+PLOT_RESPONSE = 0
 ANIMATE_KERNELS = 0
 
 # if ANIMATE_KERNELS:
@@ -150,7 +162,7 @@ def build_srcnn():
 	x = UpSampling2D((2,2), interpolation='bilinear')(x)
 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
 	x = UpSampling2D((2,2), interpolation='bilinear')(x)
-	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
+	x = Conv2D(8, (LAYER3_SIZE,LAYER3_SIZE), activation='relu', padding='same')(x)
 	sr = Conv2D(1, (3,3), activation='relu', padding='same')(x)
 
 	srcnn = Model(input_img, sr)
@@ -159,11 +171,94 @@ def build_srcnn():
 	srcnn.compile(optimizer='adam', loss='mean_squared_error')
 
 	plot_model(srcnn, to_file='./model/'+MODEL_NAME+'_graph.png', show_shapes=True, show_layer_names=True)
-	print(srcnn.summary())
+	# print(srcnn.summary())
 	model_json = srcnn.to_json()
 
 	return srcnn, model_json
 
+
+def compute_metrics(model):
+	years = np.array(range(2017, 2020)) #Right now doesn't include the two files for 2020
+	months = np.array(range(1, 13))
+	mse_bicubic = []
+	mse_srcnn = []
+	nmse_bicubic = []
+	nmse_srcnn = []
+	fireOccurrence_bicubic = []
+	fireOccurrence_srcnn = []
+	nofireOccurrence_bicubic = []
+	nofireOccurrence_srcnn = []
+	precision_bicubic = []
+	precision_srcnn = []
+	recall_bicubic = []
+	recall_srcnn = []
+	f1_bicubic = []
+	f1_srcnn = []
+	PREDICTOR_THRESHOLD = 0.0
+
+	for year_idx in years:
+		for month_idx in months:
+			# print(str(year_idx), str(month_idx), sep =' ')
+
+			lr_img = Image.open('./data/fire_LR_x4/valid/fire_lc_tmean_' + str(year_idx) + '_' + str(month_idx) +'.png')
+			lr_img_np = np.array(lr_img).astype('float32') / 255.
+			# print("LR image shape: ", lr_img_np.shape)
+			hr_img = Image.open('./data/fire_HR/valid/fire_lc_tmean_' + str(year_idx) + '_' + str(month_idx) +'.png')
+			hr_img_np = np.array(hr_img).astype('float32') / 255.
+			# print("HR image shape: ", hr_img_np.shape)
+			exp_lr_img_np = np.expand_dims(lr_img_np, axis=0) 
+			# print("LR Model Input image shape: ", exp_lr_img_np.shape)
+			sr_img_np = model.predict(np.array(exp_lr_img_np))
+			# print("SR image shape: ", sr_img_np.shape)
+
+			# Tried BICUBIC, BILINEAR, LANCZOS
+			sr_img_bicubic = lr_img.resize(size=(lr_img.size[0]*DOWNSCALE_FACTOR, lr_img.size[1]*DOWNSCALE_FACTOR), resample=Image.BICUBIC)
+			sr_img_bicubic_np = np.array(sr_img_bicubic).astype('float32') / 255.
+
+			## MSE and NMSE
+			mse_bicubic.append(np.mean(np.square(sr_img_bicubic_np[:,:,0] - hr_img_np[:,:, 0])))
+			nmse_bicubic.append(np.mean(np.square(sr_img_bicubic_np[:,:,0] - hr_img_np[:,:, 0]))/np.mean(np.square(hr_img_np[:,:, 0])))
+
+			mse_srcnn.append(np.mean(np.square(sr_img_np[0, :,:,0] - hr_img_np[:,:, 0])))
+			nmse_srcnn.append(np.mean(np.square(sr_img_np[0, :,:,0] - hr_img_np[:,:, 0]))/np.mean(np.square(hr_img_np[:,:, 0])))
+
+			## Fire Occurrence
+			fireOccurrence_bicubic.append(np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] > 0] > 0))
+			fireOccurrence_srcnn.append(np.mean(sr_img_np[0, :,:,0][hr_img_np[:,:, 0] > 0] > PREDICTOR_THRESHOLD))
+
+			## NoFire Occurrence
+			nofireOccurrence_bicubic.append(np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] == 0] == 0))
+			nofireOccurrence_srcnn.append(np.mean(sr_img_np[0,:,:,0][hr_img_np[:,:, 0] == 0] <= PREDICTOR_THRESHOLD))
+
+			precision_bicubic_image = np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] > 0] > 0)/((np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] > 0] > PREDICTOR_THRESHOLD)) + np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] == 0] > PREDICTOR_THRESHOLD))
+			precision_srcnn_image = np.mean(sr_img_np[0,:,:,0][hr_img_np[:,:, 0] > 0] > PREDICTOR_THRESHOLD)/((np.mean(sr_img_np[0,:,:,0][hr_img_np[:,:, 0] > 0] > PREDICTOR_THRESHOLD)) + np.mean(sr_img_np[0,:,:,0][hr_img_np[:,:, 0] == 0] > PREDICTOR_THRESHOLD))
+			recall_bicubic_image = np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] > 0] > 0)/((np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] > 0] > PREDICTOR_THRESHOLD)) + np.mean(sr_img_bicubic_np[:,:,0][hr_img_np[:,:, 0] > 0] <= PREDICTOR_THRESHOLD))
+			recall_srcnn_image = np.mean(sr_img_np[0,:,:,0][hr_img_np[:,:, 0] > 0] > PREDICTOR_THRESHOLD)/((np.mean(sr_img_np[0,:,:,0][hr_img_np[:,:, 0] > 0] > PREDICTOR_THRESHOLD)) + np.mean(sr_img_np[0,:,:,0][hr_img_np[:,:, 0] > 0] <= PREDICTOR_THRESHOLD))
+
+			f1_bicubic_image = 2*precision_bicubic_image*recall_bicubic_image/(precision_bicubic_image+recall_bicubic_image)
+			f1_srcnn_image = 2*precision_srcnn_image*recall_srcnn_image/(precision_srcnn_image+recall_srcnn_image)
+
+			precision_bicubic.append(precision_bicubic_image)
+			precision_srcnn.append(precision_srcnn_image)
+			recall_bicubic.append(recall_bicubic_image)
+			recall_srcnn.append(recall_srcnn_image)
+			f1_bicubic.append(f1_bicubic_image)
+			f1_srcnn.append(f1_srcnn_image)
+
+	print("Bicubic MSE: ", np.mean(mse_bicubic)) # Low = good
+	print("FireSR MSE: ", np.mean(mse_srcnn))
+	print("Bicubic NMSE: ", np.mean(nmse_bicubic)) # Low = good
+	print("FireSR NMSE: ", np.mean(nmse_srcnn))
+	print("Bicubic TPR: ", np.mean(fireOccurrence_bicubic))
+	print("FireSR TPR: ", np.mean(fireOccurrence_srcnn))
+	print("Bicubic TNR: ", np.mean(nofireOccurrence_bicubic))
+	print("FireSR TNR: ", np.mean(nofireOccurrence_srcnn))
+	print("Bicubic Precision: ", np.mean(precision_bicubic))
+	print("FireSR Precision: ", np.mean(precision_srcnn))
+	print("Bicubic Recall: ", np.mean(recall_bicubic))
+	print("FireSR Recall: ", np.mean(recall_srcnn))
+	print("Bicubic F1: ", np.mean(f1_bicubic))
+	print("FireSR F1: ", np.mean(f1_srcnn))
 
 if __name__ == '__main__':
 
@@ -179,10 +274,10 @@ if __name__ == '__main__':
 	x_val = x_val.astype('float32') / 255.
 	y_train_mono = y_train_mono.astype('float32') / 255.
 	y_val_mono = y_val_mono.astype('float32') / 255.
-	print(x_train.shape)
-	print(x_val.shape)
-	print(y_train_mono.shape)
-	print(y_val_mono.shape)
+	# print(x_train.shape)
+	# print(x_val.shape)
+	# print(y_train_mono.shape)
+	# print(y_val_mono.shape)
 
 	# x_train = np.reshape(x_train, (len(x_train), SRC_DIM[0], SRC_DIM[1], 3))  # adapt this if using `channels_first` image data format
 	# x_val = np.reshape(x_val, (len(x_val), SRC_DIM[0], SRC_DIM[1], 3))  # adapt this if using `channels_first` image data format
@@ -202,10 +297,12 @@ if __name__ == '__main__':
 	else:
 		step = STEP_FOR_PREDICTION
 		model_file = './model/'+MODEL_NAME+'_model_'+str(step).zfill(3)+'.hdf5'
-		print(model_file)
+		#print(model_file)
 		model.load_weights(model_file)
 
 	decoded_imgs = model.predict(x_val)
+
+	compute_metrics(model)
 
 	# noise_images = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
 
@@ -262,38 +359,3 @@ if __name__ == '__main__':
 			plt.suptitle(title_string)
 			plt.savefig('./model/'+MODEL_NAME+'_weights-'+str(step).zfill(3)+'.png')
 
-
-		# if PLOT_WEIGHTS:
-		# 	print('Plotting weights')
-
-		# 	w1=autoencoder.get_weights()[0]
-		# 	plt.figure(figsize=(10,10))
-		# 	for n in range(w1.shape[3]):
-		# 		ax = plt.subplot(4, 4, n+1)
-		# 		plt.imshow(w1[:,:,0,n].reshape(LAYER1_SIZE,LAYER1_SIZE))
-		# 		plt.gray()
-		# 		ax.get_xaxis().set_visible(False)
-		# 		ax.get_yaxis().set_visible(False)
-		# 	w2=autoencoder.get_weights()[2]
-		# 	plt.figure(figsize=(10,10))
-		# 	for n in range(w2.shape[3]):
-		# 		ax = plt.subplot(2, 4, n+1)
-		# 		plt.imshow(np.mean(w2,axis=2)[:,:,n])
-		# 		plt.gray()
-		# 		ax.get_xaxis().set_visible(False)
-		# 		ax.get_yaxis().set_visible(False)
-		# 	plt.savefig('./model/'+MODEL_NAME+'_weights.png')
-			# plt.show()
-
-
-
-		# if ANIMATE_KERNELS:
-
-		# 	print('Making animation of kernels...')
-
-		# 	steps = range(0, NUM_EPOCHS)
-		# 	fig = plt.figure()
-
-		# 	ani = animation.FuncAnimation(fig, animate, steps)
-		# 	gif_file = './model/autoencoder2_kernels_layer1.gif'
-		# 	ani.save(gif_file, writer='imagemagick', fps=1)
