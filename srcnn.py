@@ -18,7 +18,11 @@ MODEL_NAME_AUTO = 'autoencoder3'
 MODEL_NAME_SR1 = 'srcnn1'
 MODEL_NAME = MODEL_NAME_SR1
 NUM_EPOCHS = 200
-SRC_DIM = (24,24)
+CROPPED_IMAGES = False
+if CROPPED_IMAGES:
+	SRC_DIM = (24,24)
+else:
+	SRC_DIM = (59,26)
 SRC_SIZE = SRC_DIM[0]*SRC_DIM[1]
 NUM_IMG = 5
 OFFSET_IMG  = 10
@@ -42,28 +46,52 @@ import matplotlib.animation as animation
 
 
 def prep_dataset():
-	#print('--- Input Training DataSet ---')
-	filelist = glob.glob('./data/fire_LR_x4/train/*_cropped.png')
-	#print(filelist)
-	x_train = np.array([np.array(Image.open(fname)) for fname in filelist])
-	#print(x_train.shape)
-	#print('--- Input Validation DataSet ---')
-	filelist = glob.glob('./data/fire_LR_x4/valid/*_cropped.png')
-	#print(filelist)
-	x_val = np.array([np.array(Image.open(fname)) for fname in filelist])
-	#print(x_val.shape)
-	#print('--- Output Training DataSet ---')
-	filelist = glob.glob('./data/fire_HR/train/*_cropped.png')
-	#print(filelist)
-	y_train = np.array([np.array(Image.open(fname)) for fname in filelist])
-	y_train_mono = y_train[:,:,:,0]
-	#print(y_train_mono.shape)
-	#print('--- Output Validation DataSet ---')
-	filelist = glob.glob('./data/fire_HR/valid/*_cropped.png')
-	#print(filelist)
-	y_val = np.array([np.array(Image.open(fname)) for fname in filelist])
-	y_val_mono = y_val[:,:,:,0]
-	#print(y_val_mono.shape)
+	if CROPPED_IMAGES:
+		#print('--- Input Training DataSet ---')
+		filelist = glob.glob('./data/fire_LR_x4/train/cropped/*_cropped.png')
+		#print(filelist)
+		x_train = np.array([np.array(Image.open(fname)) for fname in filelist])
+		#print(x_train.shape)
+		#print('--- Input Validation DataSet ---')
+		filelist = glob.glob('./data/fire_LR_x4/valid/cropped/*_cropped.png')
+		#print(filelist)
+		x_val = np.array([np.array(Image.open(fname)) for fname in filelist])
+		#print(x_val.shape)
+		#print('--- Output Training DataSet ---')
+		filelist = glob.glob('./data/fire_HR/train/cropped/*_cropped.png')
+		#print(filelist)
+		y_train = np.array([np.array(Image.open(fname)) for fname in filelist])
+		y_train_mono = y_train[:,:,:,0]
+		#print(y_train_mono.shape)
+		#print('--- Output Validation DataSet ---')
+		filelist = glob.glob('./data/fire_HR/valid/cropped/*_cropped.png')
+		#print(filelist)
+		y_val = np.array([np.array(Image.open(fname)) for fname in filelist])
+		y_val_mono = y_val[:,:,:,0]
+		#print(y_val_mono.shape)
+	else:
+		#print('--- Input Training DataSet ---')
+		filelist = glob.glob('./data/fire_LR_x4/train/*.png')
+		#print(filelist)
+		x_train = np.array([np.array(Image.open(fname)) for fname in filelist])
+		#print(x_train.shape)
+		#print('--- Input Validation DataSet ---')
+		filelist = glob.glob('./data/fire_LR_x4/valid/*.png')
+		#print(filelist)
+		x_val = np.array([np.array(Image.open(fname)) for fname in filelist])
+		#print(x_val.shape)
+		#print('--- Output Training DataSet ---')
+		filelist = glob.glob('./data/fire_HR/train/*.png')
+		#print(filelist)
+		y_train = np.array([np.array(Image.open(fname)) for fname in filelist])
+		y_train_mono = y_train[:,:,:,0]
+		#print(y_train_mono.shape)
+		#print('--- Output Validation DataSet ---')
+		filelist = glob.glob('./data/fire_HR/valid/*.png')
+		#print(filelist)
+		y_val = np.array([np.array(Image.open(fname)) for fname in filelist])
+		y_val_mono = y_val[:,:,:,0]
+		#print(y_val_mono.shape)		
 	return x_train, x_val, y_train_mono, y_val_mono
 
 def build_autoencoder():
@@ -92,6 +120,28 @@ def build_autoencoder():
 
 	return autoencoder, model_json
 
+# def build_srcnn():
+# 	# build network model
+# 	input_img = Input(shape=(SRC_DIM[0], SRC_DIM[1], 3))
+# 	x = Conv2D(16, (LAYER1_SIZE,LAYER1_SIZE), activation='relu', padding='same')(input_img)
+# 	#x = BatchNormalization()(x)
+# 	x = UpSampling2D((2,2), interpolation='bilinear')(x)
+# 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
+# 	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
+# 	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
+# 	#x = Conv2D(1, (1,1), activation='relu', padding='same')(x)
+
+# 	srcnn = Model(input_img, sr)
+# 	#opt = SGD(lr=0.01, momentum=0.9)
+# 	#srcnn.compile(optimizer=opt, loss='mean_squared_error')
+# 	srcnn.compile(optimizer='adam', loss='mean_squared_error')
+
+# 	plot_model(srcnn, to_file='./model/'+MODEL_NAME+'_graph.png', show_shapes=True, show_layer_names=True)
+# 	print(srcnn.summary())
+# 	model_json = srcnn.to_json()
+
+# 	return srcnn, model_json
+
 def build_srcnn():
 	# build network model
 	input_img = Input(shape=(SRC_DIM[0], SRC_DIM[1], 3))
@@ -99,9 +149,9 @@ def build_srcnn():
 	#x = BatchNormalization()(x)
 	x = UpSampling2D((2,2), interpolation='bilinear')(x)
 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
-	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
-	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
-	#x = Conv2D(1, (1,1), activation='relu', padding='same')(x)
+	x = UpSampling2D((2,2), interpolation='bilinear')(x)
+	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
+	sr = Conv2D(1, (3,3), activation='relu', padding='same')(x)
 
 	srcnn = Model(input_img, sr)
 	#opt = SGD(lr=0.01, momentum=0.9)
