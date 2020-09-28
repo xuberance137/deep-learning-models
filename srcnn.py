@@ -42,13 +42,13 @@ LAYER2_SIZE = 5
 LAYER3_SIZE = 3
 
 DEBUG_MODE = 0
-TRAIN_MODEL = 1
+TRAIN_MODEL = 0
 BATCH_SIZE = 16
-STEP_FOR_PREDICTION = NUM_EPOCHS-1
+STEP_FOR_PREDICTION = 350 #NUM_EPOCHS-1
 
 PLOT_WEIGHTS = 0
-STORE_WEIGHTS = 1
-PLOT_RESPONSE = 0
+STORE_WEIGHTS = 0
+PLOT_RESPONSE = 1
 ANIMATE_KERNELS = 0
 
 # if ANIMATE_KERNELS:
@@ -106,53 +106,50 @@ def prep_dataset():
 		#print(y_val_mono.shape)		
 	return x_train, x_val, y_train_mono, y_val_mono
 
-def build_autoencoder():
+
+def build_srcnn_simple():
 	# build network model
 	input_img = Input(shape=(SRC_DIM[0], SRC_DIM[1], 3))
 	x = Conv2D(16, (LAYER1_SIZE,LAYER1_SIZE), activation='relu', padding='same')(input_img)
-	x = MaxPooling2D((2,2), padding='same')(x)
+	#x = BatchNormalization()(x)
+	x = UpSampling2D((2,2), interpolation='bilinear')(x)
 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
-	x = MaxPooling2D((2,2), padding='same')(x)
-	x = Conv2D(8, (3,3), activation='relu', padding='same')(x)
-	encoded = MaxPooling2D((2,2), padding='same')(x)
-	x = Conv2D(8, (3,3), activation='relu', padding='same')(encoded)
-	x = UpSampling2D((2,2))(x)
-	x = Conv2D(8, (3,3), activation='relu', padding='same')(x)
-	x = UpSampling2D((2,2))(x)
-	x = Conv2D(16, (3,3), activation='relu', padding='same')(x)
-	x = UpSampling2D((8,8))(x)
-	decoded = Conv2D(1, (3,3), activation='sigmoid', padding='same')(x)
+	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
+	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
+	x = Conv2D(1, (1,1), activation='relu', padding='same')(x)
 
-	autoencoder = Model(input_img, decoded)
-	autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
+	srcnn = Model(input_img, sr)
+	#opt = SGD(lr=0.01, momentum=0.9)
+	#srcnn.compile(optimizer=opt, loss='mean_squared_error')
+	srcnn.compile(optimizer='adam', loss='mean_squared_error')
 
-	plot_model(autoencoder, to_file='./model/'+MODEL_NAME+'_graph.png', show_shapes=True, show_layer_names=True)
-	print(autoencoder.summary())
-	model_json = autoencoder.to_json()
+	plot_model(srcnn, to_file='./model/'+MODEL_NAME+'_graph.png', show_shapes=True, show_layer_names=True)
+	print(srcnn.summary())
+	model_json = srcnn.to_json()
 
-	return autoencoder, model_json
+	return srcnn, model_json
 
-# def build_srcnn():
-# 	# build network model
-# 	input_img = Input(shape=(SRC_DIM[0], SRC_DIM[1], 3))
-# 	x = Conv2D(16, (LAYER1_SIZE,LAYER1_SIZE), activation='relu', padding='same')(input_img)
-# 	#x = BatchNormalization()(x)
-# 	x = UpSampling2D((2,2), interpolation='bilinear')(x)
-# 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
-# 	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
-# 	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
-# 	#x = Conv2D(1, (1,1), activation='relu', padding='same')(x)
+def build_srcnn_drift():
+	# build network model
+	input_img = Input(shape=(SRC_DIM[0], SRC_DIM[1], 3))
+	x = Conv2D(16, (LAYER1_SIZE,LAYER1_SIZE), activation='relu', padding='same')(input_img)
+	#x = BatchNormalization()(x)
+	x = UpSampling2D((2,2), interpolation='bilinear')(x)
+	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
+	x = Conv2D(8, (LAYER3_SIZE,LAYER3_SIZE), activation='relu', padding='same')(x)
+	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
+	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
 
-# 	srcnn = Model(input_img, sr)
-# 	#opt = SGD(lr=0.01, momentum=0.9)
-# 	#srcnn.compile(optimizer=opt, loss='mean_squared_error')
-# 	srcnn.compile(optimizer='adam', loss='mean_squared_error')
+	srcnn = Model(input_img, sr)
+	#opt = SGD(lr=0.01, momentum=0.9)
+	#srcnn.compile(optimizer=opt, loss='mean_squared_error')
+	srcnn.compile(optimizer='adam', loss='mean_squared_error')
 
-# 	plot_model(srcnn, to_file='./model/'+MODEL_NAME+'_graph.png', show_shapes=True, show_layer_names=True)
-# 	print(srcnn.summary())
-# 	model_json = srcnn.to_json()
+	plot_model(srcnn, to_file='./model/'+MODEL_NAME+'_graph.png', show_shapes=True, show_layer_names=True)
+	print(srcnn.summary())
+	model_json = srcnn.to_json()
 
-# 	return srcnn, model_json
+	return srcnn, model_json
 
 def build_srcnn():
 	# build network model
@@ -161,9 +158,9 @@ def build_srcnn():
 	#x = BatchNormalization()(x)
 	x = UpSampling2D((2,2), interpolation='bilinear')(x)
 	x = Conv2D(8, (LAYER2_SIZE,LAYER2_SIZE), activation='relu', padding='same')(x)
-	x = UpSampling2D((2,2), interpolation='bilinear')(x)
 	x = Conv2D(8, (LAYER3_SIZE,LAYER3_SIZE), activation='relu', padding='same')(x)
-	sr = Conv2D(1, (3,3), activation='relu', padding='same')(x)
+	x = Conv2D(1, (3,3), activation='relu', padding='same')(x)
+	sr = UpSampling2D((2,2), interpolation='bilinear')(x)
 
 	srcnn = Model(input_img, sr)
 	#opt = SGD(lr=0.01, momentum=0.9)
@@ -171,11 +168,10 @@ def build_srcnn():
 	srcnn.compile(optimizer='adam', loss='mean_squared_error')
 
 	plot_model(srcnn, to_file='./model/'+MODEL_NAME+'_graph.png', show_shapes=True, show_layer_names=True)
-	# print(srcnn.summary())
+	print(srcnn.summary())
 	model_json = srcnn.to_json()
 
 	return srcnn, model_json
-
 
 def compute_metrics(model):
 	years = np.array(range(2017, 2020)) #Right now doesn't include the two files for 2020
@@ -245,20 +241,20 @@ def compute_metrics(model):
 			f1_bicubic.append(f1_bicubic_image)
 			f1_srcnn.append(f1_srcnn_image)
 
-	print("Bicubic MSE: ", np.mean(mse_bicubic)) # Low = good
-	print("FireSR MSE: ", np.mean(mse_srcnn))
-	print("Bicubic NMSE: ", np.mean(nmse_bicubic)) # Low = good
-	print("FireSR NMSE: ", np.mean(nmse_srcnn))
-	print("Bicubic TPR: ", np.mean(fireOccurrence_bicubic))
-	print("FireSR TPR: ", np.mean(fireOccurrence_srcnn))
-	print("Bicubic TNR: ", np.mean(nofireOccurrence_bicubic))
-	print("FireSR TNR: ", np.mean(nofireOccurrence_srcnn))
-	print("Bicubic Precision: ", np.mean(precision_bicubic))
-	print("FireSR Precision: ", np.mean(precision_srcnn))
-	print("Bicubic Recall: ", np.mean(recall_bicubic))
-	print("FireSR Recall: ", np.mean(recall_srcnn))
-	print("Bicubic F1: ", np.mean(f1_bicubic))
-	print("FireSR F1: ", np.mean(f1_srcnn))
+	print("Bicubic MSE: ", np.mean(mse_bicubic), '+/-', np.std(mse_bicubic)) 
+	print("FireSR MSE: ", np.mean(mse_srcnn), '+/-', np.std(mse_srcnn))
+	print("Bicubic NMSE: ", np.mean(nmse_bicubic), '+/-', np.std(nmse_bicubic))
+	print("FireSR NMSE: ", np.mean(nmse_srcnn), '+/-', np.std(nmse_srcnn))
+	print("Bicubic TPR: ", np.mean(fireOccurrence_bicubic), '+/-', np.std(fireOccurrence_bicubic))
+	print("FireSR TPR: ", np.mean(fireOccurrence_srcnn), '+/-', np.std(fireOccurrence_srcnn))
+	print("Bicubic TNR: ", np.mean(nofireOccurrence_bicubic), '+/-', np.std(nofireOccurrence_srcnn))
+	print("FireSR TNR: ", np.mean(nofireOccurrence_srcnn), '+/-', np.std(nofireOccurrence_srcnn))
+	print("Bicubic Precision: ", np.mean(precision_bicubic), '+/-', np.std(precision_bicubic))
+	print("FireSR Precision: ", np.mean(precision_srcnn),'+/-', np.std(precision_srcnn))
+	print("Bicubic Recall: ", np.mean(recall_bicubic),'+/-', np.std(recall_bicubic))
+	print("FireSR Recall: ", np.mean(recall_srcnn),'+/-', np.std(recall_srcnn))
+	print("Bicubic F1: ", np.mean(f1_bicubic),'+/-', np.std(f1_bicubic))
+	print("FireSR F1: ", np.mean(f1_srcnn),'+/-', np.std(f1_srcnn))
 
 if __name__ == '__main__':
 
@@ -300,9 +296,10 @@ if __name__ == '__main__':
 		#print(model_file)
 		model.load_weights(model_file)
 
-	decoded_imgs = model.predict(x_val)
 
 	compute_metrics(model)
+
+	decoded_imgs = model.predict(x_val)
 
 	# noise_images = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
 
@@ -342,7 +339,7 @@ if __name__ == '__main__':
 		plt.show()
 
 	if STORE_WEIGHTS:
-		for step in range(1,NUM_EPOCHS):
+		for step in range(1,300): #NUM_EPOCHS):
 			model_file = './model/'+MODEL_NAME+'_model_'+str(step).zfill(3)+'.hdf5'
 			print(model_file)
 			model.load_weights(model_file)
@@ -355,7 +352,7 @@ if __name__ == '__main__':
 				ax.get_xaxis().set_visible(False)
 				ax.get_yaxis().set_visible(False)
 
-			title_string = 'AutoEncoder Layer 1 - Step: ' + str(step)
+			title_string = 'FireSR Layer 1 - Step: ' + str(step)
 			plt.suptitle(title_string)
 			plt.savefig('./model/'+MODEL_NAME+'_weights-'+str(step).zfill(3)+'.png')
 
