@@ -5,6 +5,10 @@ f1 = 9, f3 = 5, n1 = 64 and n2 = 32
 
 Composing Weights Animation
 convert -delay 10 -loop 0 ./model/srcnn1_weights-*.png ./model/srcnn1_weights-animated.gif
+
+Renaming AUS data files
+for f in *.png; do  echo "Moving $f"; mv "$f"  "$(basename "$f" .png)_AUS.png"; done
+
 '''
 
 
